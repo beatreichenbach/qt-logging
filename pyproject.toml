@@ -1,6 +1,6 @@
 [project]
 name = "qt-logging"
-version = "0.0.0"
+version = "0.1.0"
 description = "Log viewer and status bar for Qt applications"
 authors = [
     {name = "Beat Reichenbach"}
