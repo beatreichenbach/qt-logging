@@ -1,6 +1,7 @@
 import logging
+import platform
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from qt_logging.logger import LogCache, LogBar
 from tests import application
@@ -70,6 +71,33 @@ class Widget(QtWidgets.QWidget):
             pixmap = viewer.grab()
             pixmap.save(path)
 
+def get_monospace_font(font_size: int = 9) -> QtGui.QFont:
+    """Get available monospace fonts for the current platform."""
+
+    os_name = platform.system()
+    if os_name == "Windows":
+        preferred = "Cascadia Mono"
+        fallbacks = ["Consolas", "Courier New"]
+    elif os_name == "Darwin":
+        preferred = "SF Mono"
+        fallbacks = ["Menlo", "Monaco", "Courier New"]
+    else:
+        preferred = "DejaVu Sans Mono"
+        fallbacks = ["Ubuntu Mono", "Noto Mono", "Liberation Mono", "Courier New"]
+
+    available_fonts = QtGui.QFontDatabase.families()
+    if preferred in available_fonts:
+        return QtGui.QFont(preferred, font_size)
+
+    for fallback in fallbacks:
+        if fallback in available_fonts:
+            return QtGui.QFont(fallback, font_size)
+
+    font = QtGui.QFont()
+    font.setStyleHint(QtGui.QFont.StyleHint.Monospace)
+    font.setFamily("monospace")
+    font.setPointSize(font_size)
+    return font
 
 def main() -> None:
     with application():
@@ -80,6 +108,8 @@ def main() -> None:
         viewer = widget.log_bar.viewer()
         if viewer:
             viewer.resize(1080, 480)
+            log_font = get_monospace_font(font_size=9)
+            viewer.set_font(log_font)
 
         logging.debug('debug')
         logging.error('error')

@@ -107,6 +107,7 @@ class LogViewer(QtWidgets.QWidget):
         self._last_save_path = os.path.expanduser('~')
         self._names = set()
         self._levels = set()
+        self._font = None
 
         # To escape html later, use placeholders.
         fmt = '[{asctime}][html][{levelname: <8}][/html] {message}'
@@ -215,6 +216,21 @@ class LogViewer(QtWidgets.QWidget):
         self.toolbar.addAction(action)
         self._clear_action = action
 
+    def _apply_font(self, font: QtGui.QFont) -> None:
+        document = self.text_edit.document()
+        document.setDefaultStyleSheet(f"""
+            * {{
+                font-family: "{font.family()}";
+                font-size: {font.pointSize()}pt;
+            }}
+        """)
+
+    def set_font(self, font: QtGui.QFont) -> None:
+        self._font = font
+        self._apply_font(font)
+        if self.isVisible() and self._cache:
+            self.refresh()
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self._disconnect_cache()
         super().closeEvent(event)
@@ -280,6 +296,8 @@ class LogViewer(QtWidgets.QWidget):
 
     def clear(self) -> None:
         self.text_edit.clear()
+        if self._font:
+            self._apply_font(self._font)
         self._update_error_count(0)
         self._update_warning_count(0)
 
@@ -287,7 +305,7 @@ class LogViewer(QtWidgets.QWidget):
         self.clear()
         if self._cache:
             for record in self._cache.records:
-                self.add_record(record)
+                self.add_record(record, count=False)
 
     def save(self) -> None:
         if not self._cache:
