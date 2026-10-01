@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.0.1 (2026-09-30)
+
+### Bug Fixes
+
+- **logger**: Harden cache lifecycle, locking, and filtering
+  ([`f93bf2f`](https://github.com/beatreichenbach/qt-logging/commit/f93bf2f81736893ed324529e822c5d4d8e21813b))
+
+### Build System
+
+- Harden PyPI trusted publishing workflow
+  ([`3901725`](https://github.com/beatreichenbach/qt-logging/commit/3901725219b38d66e4c733c943b119fe6ceef60b))
+
+### Documentation
+
+- Add badges to readme
+  ([`e8cd196`](https://github.com/beatreichenbach/qt-logging/commit/e8cd196de026f54b0ed353a77b076e384fa71df5))
+
+
 ## v1.0.0 (2026-09-30)
 
 ### Bug Fixes
