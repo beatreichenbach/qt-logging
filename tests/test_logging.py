@@ -59,6 +59,20 @@ def test_log_bar_names(app: QtWidgets.QApplication) -> None:
     assert bar.names() == ('package',)
 
 
+def test_log_bar_formatter(app: QtWidgets.QApplication) -> None:
+    bar = LogBar()
+    formatter = logging.Formatter('{message}', style='{')
+    bar.set_formatter(formatter)
+    assert bar.formatter() is formatter
+
+
+def test_log_viewer_formatter(app: QtWidgets.QApplication) -> None:
+    viewer = LogViewer()
+    formatter = logging.Formatter('{message}', style='{')
+    viewer.set_formatter(formatter)
+    assert viewer.formatter() is formatter
+
+
 def test_log_viewer_levels(app: QtWidgets.QApplication) -> None:
     viewer = LogViewer()
     viewer.set_levels((logging.ERROR,))

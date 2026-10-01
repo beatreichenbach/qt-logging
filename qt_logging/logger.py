@@ -210,6 +210,12 @@ class LogViewer(QtWidgets.QWidget):
         if self.isVisible():
             self._connect_cache()
 
+    def formatter(self) -> logging.Formatter:
+        return self._formatter
+
+    def set_formatter(self, formatter: logging.Formatter) -> None:
+        self._formatter = formatter
+
     def levels(self) -> tuple[int, ...]:
         return tuple(self._levels)
 
@@ -507,6 +513,12 @@ class LogBar(QtWidgets.QWidget):
 
     def set_names(self, names: Sequence[str]) -> None:
         self._names = set(names)
+
+    def formatter(self) -> logging.Formatter:
+        return self._formatter
+
+    def set_formatter(self, formatter: logging.Formatter) -> None:
+        self._formatter = formatter
 
     def show_message(
         self, message: str, level: int = logging.INFO, force: bool = False
