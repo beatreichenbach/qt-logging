@@ -7,7 +7,6 @@ quick access and feedback to the user.
 This package uses Material Icons from
 [qt-material-icons](https://github.com/beatreichenbach/qt-material-icons).
 
-
 ![Header](https://raw.githubusercontent.com/beatreichenbach/qt-logging/refs/heads/main/.github/assets/header.png)
 
 ![Header](https://raw.githubusercontent.com/beatreichenbach/qt-logging/refs/heads/main/.github/assets/log_bar.png)
@@ -15,6 +14,7 @@ This package uses Material Icons from
 ## Installation
 
 Install using pip:
+
 ```shell
 pip install qt-logging
 ```
@@ -24,7 +24,7 @@ pip install qt-logging
 ```python
 import logging
 
-from PySide6 import QtWidgets
+from qtpy import QtWidgets
 import qt_logging
 
 app = QtWidgets.QApplication()
@@ -40,7 +40,7 @@ logging.error('Something went wrong!')
 app.exec()
 ```
 
-For more examples see the `tests` directory.
+For more examples see the `examples` directory.
 
 ## Contributing
 
