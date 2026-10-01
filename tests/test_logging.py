@@ -94,3 +94,71 @@ def test_log_viewer_state_roundtrip(app: QtWidgets.QApplication) -> None:
     other.set_state(viewer.state())
     assert set(other.levels()) == {logging.INFO}
     assert other.names() == ('package',)
+
+
+def test_log_viewer_state_is_copy(app: QtWidgets.QApplication) -> None:
+    viewer = LogViewer()
+    viewer.set_levels((logging.ERROR,))
+
+    state = viewer.state()
+    state['levels'].add(logging.DEBUG)
+    state['names'].add('package')
+
+    assert viewer.levels() == (logging.ERROR,)
+    assert viewer.names() == ()
+
+
+def test_log_viewer_name_matching(app: QtWidgets.QApplication) -> None:
+    viewer = LogViewer()
+    viewer.set_levels((logging.ERROR,))
+    viewer.set_names(['package'])
+
+    viewer.add_record(make_record(logging.ERROR, 'exact', name='package'))
+    viewer.add_record(make_record(logging.ERROR, 'child', name='package.module'))
+    viewer.add_record(make_record(logging.ERROR, 'sibling', name='packager'))
+
+    text = viewer.text_edit.toPlainText()
+    assert 'exact' in text
+    assert 'child' in text
+    assert 'sibling' not in text
+
+
+def test_log_bar_name_matching(app: QtWidgets.QApplication) -> None:
+    cache = LogCache()
+    bar = LogBar(cache)
+    bar.set_names(['package'])
+
+    cache.add(make_record(logging.ERROR, 'child', name='package.module'))
+    assert bar.message_line.text() == '[ERROR] child'
+
+    cache.add(make_record(logging.ERROR, 'sibling', name='packager'))
+    assert bar.message_line.text() == '[ERROR] child'
+
+
+def test_log_cache_connect_once_and_close(app: QtWidgets.QApplication) -> None:
+    logger = logging.getLogger('qt_logging_test_cache')
+    logger.setLevel(logging.DEBUG)
+    cache = LogCache()
+
+    cache.connect_logger(logger)
+    cache.connect_logger(logger)
+    logger.error('first')
+    assert len(cache.records()) == 1
+
+    cache.close()
+    logger.error('second')
+    assert len(cache.records()) == 1
+
+
+def test_log_bar_set_cache_replaces(app: QtWidgets.QApplication) -> None:
+    first = LogCache()
+    second = LogCache()
+    bar = LogBar(first)
+    bar.set_names(['package'])
+    bar.set_cache(second)
+
+    first.add(make_record(logging.ERROR, 'old', name='package'))
+    assert bar.message_line.text() == ''
+
+    second.add(make_record(logging.ERROR, 'new', name='package'))
+    assert bar.message_line.text() == '[ERROR] new'

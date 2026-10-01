@@ -3,7 +3,8 @@ from __future__ import annotations
 import dataclasses
 import html
 import logging
-from collections.abc import Sequence
+import threading
+from collections.abc import Collection, Sequence
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -47,25 +48,44 @@ class LogCache(QtCore.QObject):
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
 
+        self._lock = threading.Lock()
         self._records: list[logging.LogRecord] = []
+        self._loggers: list[logging.Logger] = []
         self._handler = _CacheHandler(self)
 
     def records(self) -> tuple[logging.LogRecord, ...]:
-        return tuple(self._records)
+        with self._lock:
+            return tuple(self._records)
 
     def add(self, record: logging.LogRecord) -> None:
-        self._records.append(record)
+        with self._lock:
+            self._records.append(record)
         try:
             self.added.emit(record)
         except RuntimeError:
             self._handler.close()
 
     def clear(self) -> None:
-        self._records = []
+        with self._lock:
+            self._records = []
         self.cleared.emit()
 
     def connect_logger(self, logger: logging.Logger) -> None:
-        logger.addHandler(self._handler)
+        if logger not in self._loggers:
+            logger.addHandler(self._handler)
+            self._loggers.append(logger)
+
+    def disconnect_logger(self, logger: logging.Logger) -> None:
+        if logger in self._loggers:
+            logger.removeHandler(self._handler)
+            self._loggers.remove(logger)
+
+    def close(self) -> None:
+        """Disconnect the cache from all loggers and close its handler."""
+
+        for logger in list(self._loggers):
+            self.disconnect_logger(logger)
+        self._handler.close()
 
     def save(self, filename: str) -> None:
         formatter = logging.Formatter(
@@ -73,7 +93,8 @@ class LogCache(QtCore.QObject):
             datefmt='%I:%M:%S%p',
             style='{',
         )
-        text = ''.join(f'{formatter.format(record)}\n' for record in self._records)
+        records = self.records()
+        text = ''.join(f'{formatter.format(record)}\n' for record in records)
         Path(filename).write_text(text, encoding='utf-8')
 
 
@@ -188,6 +209,7 @@ class LogViewer(QtWidgets.QWidget):
         action = QtGui.QAction(self)
         action.setText('Clear')
         action.setIcon(MaterialIcon('backspace'))
+        action.triggered.connect(self._clear_cache)
         self.toolbar.addAction(action)
         self._clear_action = action
 
@@ -206,7 +228,6 @@ class LogViewer(QtWidgets.QWidget):
     def set_cache(self, cache: LogCache) -> None:
         self._disconnect_cache()
         self._cache = cache
-        self._clear_action.triggered.connect(self._cache.clear)
         if self.isVisible():
             self._connect_cache()
 
@@ -235,8 +256,8 @@ class LogViewer(QtWidgets.QWidget):
 
     def state(self) -> dict[str, Any]:
         return {
-            'names': self._names,
-            'levels': self._levels,
+            'names': set(self._names),
+            'levels': set(self._levels),
             'wrap': self._wrap_action.isChecked(),
         }
 
@@ -253,7 +274,7 @@ class LogViewer(QtWidgets.QWidget):
         self._wrap_action.setChecked(bool(values['wrap']))
 
     def add_record(self, record: logging.LogRecord, count: bool = True) -> None:
-        if self._names and not record.name.startswith(tuple(self._names)):
+        if self._names and not _in_packages(record.name, self._names):
             return
 
         color = ''
@@ -344,6 +365,10 @@ class LogViewer(QtWidgets.QWidget):
             self._cache_connected = False
             self.clear()
 
+    def _clear_cache(self) -> None:
+        if self._cache:
+            self._cache.clear()
+
     def _filter(self) -> None:
         self.text_edit.clear()
         if self._cache:
@@ -417,7 +442,9 @@ class LogBar(QtWidgets.QWidget):
 
         self._colors = get_colors()
         self._cache: LogCache | None = None
+        self._owned_cache: LogCache | None = None
         self._viewer: LogViewer | None = None
+        self._connected = False
         self._current_message = logging.makeLogRecord({'levelno': logging.NOTSET})
         self._formatter = logging.Formatter(fmt='[{levelname}] {message}', style='{')
         self._level = SUCCESS
@@ -425,10 +452,12 @@ class LogBar(QtWidgets.QWidget):
 
         self._init_ui()
 
-        if not cache:
+        if cache is None:
             cache = LogCache(self)
             cache.connect_logger(logging.getLogger())
+            self._owned_cache = cache
         self.set_cache(cache)
+        self.destroyed.connect(self._close_owned_cache)
 
     def _init_ui(self) -> None:
         # log icons
@@ -498,9 +527,14 @@ class LogBar(QtWidgets.QWidget):
         return self._cache
 
     def set_cache(self, cache: LogCache) -> None:
+        self._disconnect_cache()
+        if self._owned_cache is not None and self._owned_cache is not cache:
+            self._owned_cache.close()
+            self._owned_cache = None
         self._cache = cache
         self._cache.added.connect(self._show_record)
         self._cache.cleared.connect(self.clear_message)
+        self._connected = True
 
     def level(self) -> int:
         return self._level
@@ -571,15 +605,40 @@ class LogBar(QtWidgets.QWidget):
     def remove_widget(self, widget: QtWidgets.QWidget) -> None:
         self._layout.removeWidget(widget)
 
+    def _disconnect_cache(self) -> None:
+        if self._cache and self._connected:
+            try:
+                self._cache.added.disconnect(self._show_record)
+                self._cache.cleared.disconnect(self.clear_message)
+            except RuntimeError:
+                pass
+            self._connected = False
+
+    def _close_owned_cache(self, _object: QtCore.QObject | None = None) -> None:
+        self._disconnect_cache()
+        if self._owned_cache is not None:
+            self._owned_cache.close()
+            self._owned_cache = None
+
     def _show_record(self, record: logging.LogRecord) -> None:
-        if self._names and not record.name.startswith(tuple(self._names)):
+        if self._names and not _in_packages(record.name, self._names):
             return
         message = self._formatter.format(record)
         message = message.split('\n')[-1]
         self.show_message(message, level=record.levelno)
 
 
+def _in_packages(name: str, packages: Collection[str]) -> bool:
+    """Return whether a logger name is a package or one of its subpackages."""
+
+    return any(
+        name == package or name.startswith(f'{package}.') for package in packages
+    )
+
+
 def get_colors() -> Colors:
+    """Return the log level colors from the active theme, if available."""
+
     try:
         import qt_themes
 
