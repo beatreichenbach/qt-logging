@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import logging
+from pathlib import Path
 
 from qtpy import QtCore, QtWidgets
 
-from qt_logging.logger import LogCache, LogBar
-from tests import application
+from examples import application
+from qt_logging import LogBar, LogCache
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+ASSETS = Path(__file__).resolve().parent.parent / '.github' / 'assets'
 
 
 class Widget(QtWidgets.QWidget):
@@ -17,7 +22,7 @@ class Widget(QtWidgets.QWidget):
 
     def _init_ui(self) -> None:
         self.setWindowTitle('Widget')
-        self.resize(QtCore.QSize(1080, 256))
+        self.resize(QtCore.QSize(1080, 64))
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(QtCore.QMargins())
@@ -33,10 +38,9 @@ class Widget(QtWidgets.QWidget):
         layout.addStretch()
 
         cache = LogCache()
-        root_logger = logging.getLogger()
-        cache.connect_logger(root_logger)
+        cache.connect_logger(logging.getLogger())
 
-        for i in range(100):
+        for _ in range(100):
             logger.debug('debug')
             logger.error('error')
             logger.info('info')
@@ -44,7 +48,7 @@ class Widget(QtWidgets.QWidget):
             logger.warning('warning')
 
         logger2 = logging.getLogger('qt_extensions')
-        for i in range(20):
+        for _ in range(20):
             logger2.debug('debug')
             logger2.error('error')
             logger2.info('info')
@@ -60,15 +64,11 @@ class Widget(QtWidgets.QWidget):
         layout.addWidget(self.log_bar)
 
     def _screenshot(self) -> None:
-        path = '../.github/assets/log_bar.png'
-        pixmap = self.log_bar.grab()
-        pixmap.save(path)
+        self.log_bar.grab().save(str(ASSETS / 'log_bar.png'))
 
         viewer = self.log_bar.viewer()
         if viewer:
-            path = '../.github/assets/viewer.png'
-            pixmap = viewer.grab()
-            pixmap.save(path)
+            viewer.grab().save(str(ASSETS / 'viewer.png'))
 
 
 def main() -> None:
@@ -87,10 +87,9 @@ def main() -> None:
         logging.critical('critical')
         logging.warning('warning')
         try:
-            a = 1 / 0
-            logger.info(a)
-        except ZeroDivisionError as e:
-            logging.exception(e)
+            raise ZeroDivisionError('division by zero')
+        except ZeroDivisionError:
+            logging.exception('An exception occurred')
 
 
 if __name__ == '__main__':
