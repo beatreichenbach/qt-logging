@@ -1,5 +1,11 @@
 # qt-logging
 
+[![PyPI version](https://img.shields.io/pypi/v/qt-logging.svg)](https://pypi.org/project/qt-logging/)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/qt-logging/)
+[![License](https://img.shields.io/pypi/l/qt-logging.svg)](https://github.com/beatreichenbach/qt-logging/blob/main/LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/badge/type%20checked-ty-261230.svg)](https://github.com/astral-sh/ty)
+
 The `qt-logging` package provides widgets to display the log output to the user.
 The log viewer can be used to look at filtered logging output while the log bar offers
 quick access and feedback to the user.
