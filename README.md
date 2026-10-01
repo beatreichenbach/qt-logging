@@ -48,5 +48,4 @@ To contribute please refer to the [Contributing Guide](CONTRIBUTING.md).
 
 ## License
 
-MIT License. Copyright 2024 - Beat Reichenbach.
-See the [License file](LICENSE) for details.
+MIT License. Copyright 2024 - Beat Reichenbach. See the [License file](LICENSE) for details.
